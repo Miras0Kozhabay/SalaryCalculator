@@ -35,14 +35,15 @@ func (c *Calculator) CalculateFromGross(gross float64) (*models.CalculateRespons
 	}
 
 	resp := &models.CalculateResponse{
-		GrossSalary: gross,
-		NetSalary:   net,
-		OPV:         opv,
-		IPN:         ipn,
-		VOSMS:       vosms,
-		SO:          so,
-		OOSMS:       oosms,
-		SN:          sn,
+		GrossSalary:   gross,
+		NetSalary:     net,
+		OPV:           opv,
+		IPN:           ipn,
+		VOSMS:         vosms,
+		SO:            so,
+		OOSMS:         oosms,
+		SN:            sn,
+		EmployerTotal: gross + so + oosms + sn,
 	}
 
 	return resp, nil

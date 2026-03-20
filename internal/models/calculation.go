@@ -27,14 +27,13 @@ type CalculateRequest struct {
 }
 
 type CalculateResponse struct {
-	GrossSalary float64 `json:"gross_salary"`
-	NetSalary   float64 `json:"net_salary"`
-
-	OPV   float64 `json:"opv"`
-	IPN   float64 `json:"ipn"`
-	VOSMS float64 `json:"vosms"`
-
-	SO    float64 `json:"so"`
-	SN    float64 `json:"sn"`
-	OOSMS float64 `json:"oosms"`
+	GrossSalary   float64 `json:"gross_salary"`
+	NetSalary     float64 `json:"net_salary"`
+	OPV           float64 `json:"opv"`
+	IPN           float64 `json:"ipn"`
+	VOSMS         float64 `json:"vosms"`
+	SO            float64 `json:"so"`
+	SN            float64 `json:"sn"`
+	OOSMS         float64 `json:"oosms"`
+	EmployerTotal float64 `json:"employer_total"`
 }
