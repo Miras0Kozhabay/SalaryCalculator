@@ -18,19 +18,19 @@ func NewSalaryHandler(s *services.SalaryService) *SalaryHandler {
 func (h *SalaryHandler) Calculate(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		jsonError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var req models.CalculateRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		jsonError(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 
 	resp, err := h.Service.Calculate(&req)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		jsonError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
