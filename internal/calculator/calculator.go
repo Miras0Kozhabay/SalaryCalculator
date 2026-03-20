@@ -30,6 +30,9 @@ func (c *Calculator) CalculateFromGross(gross float64) (*models.CalculateRespons
 	so := (gross - opv) * 0.035
 	oosms := gross * 0.03
 	sn := (gross-opv-vosms)*0.095 - so
+	if sn < 0 {
+		sn = 0
+	}
 
 	resp := &models.CalculateResponse{
 		GrossSalary: gross,
