@@ -264,6 +264,26 @@ Responsive.
 
 ---
 
+## Frontend UX Improvements
+
+- Use Tailwind CSS for modern UI
+- Responsive design with grid/flex layout
+- Card-style sections for:
+  - Form input
+  - Employee Deductions
+  - Employer Contributions
+  - History
+- Highlight Net Salary in blue
+- Highlight Employer Contributions in green
+- Hover and transition effects on cards
+- Responsive tables for history
+- Input fields with focus styles and validation
+- Vanilla JS for API calls
+- Show loading spinner while fetching
+- Show error messages if API fails
+
+---
+
 ## Git
 
 Atomic commits.

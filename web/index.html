@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KZ Salary Calculator</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.3.2/dist/tailwind.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="content">
+    <header class="header">
+      <div class="header-inner">
+        <div class="logo">
+          <div class="logo-badge">KZ</div>
+          <div class="logo-title">Salary Calculator</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;">
+          <div class="header-meta">Налоговый калькулятор · Казахстан · 2025</div>
+          <button id="themeToggle" onclick="toggleTheme()" title="Переключить тему" style="
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            width: 36px; height: 36px;
+            border-radius: 2px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px;
+            transition: background 0.15s, border-color 0.15s;
+            flex-shrink: 0;
+          ">🌙</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <!-- Left: Input -->
+      <div class="left-col">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-dot" style="background: var(--accent-blue)"></div>
+            <div class="card-title">Входные данные</div>
+          </div>
+          <div class="card-body">
+            <div class="error-banner" id="errorBanner"></div>
+
+            <div class="field">
+              <label>Размер зарплаты</label>
+              <input type="number" id="salaryInput" placeholder="500000" min="1" />
+              <div class="field-suffix">₸ · казахстанских тенге</div>
+            </div>
+
+            <div class="field">
+              <label>Тип расчёта</label>
+              <div class="mode-toggle">
+                <button class="mode-btn active" data-mode="gross" onclick="setMode('gross')">GROSS</button>
+                <button class="mode-btn" data-mode="net" onclick="setMode('net')">NET</button>
+              </div>
+              <div class="field-suffix" id="modeHint">Рассчитать NET из GROSS (до вычета налогов)</div>
+            </div>
+
+            <button class="btn-calc" id="calcBtn" onclick="calculate()">
+              <span id="btnText">Рассчитать</span>
+              <div class="spinner" id="btnSpinner" style="display:none"></div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Tax rates reference -->
+        <div class="card" style="margin-top: 24px;">
+          <div class="card-header">
+            <div class="card-dot" style="background: var(--accent-amber)"></div>
+            <div class="card-title">Ставки налогов 2025</div>
+          </div>
+          <div class="card-body" style="padding: 0;">
+            <div class="tax-grid" style="border: none; border-radius: 0; margin: 0;">
+              <div class="tax-row">
+                <span class="tax-label"><span class="abbr">ОПВ</span> Пенсионный взнос</span>
+                <span class="tax-value mono">10%</span>
+              </div>
+              <div class="tax-row">
+                <span class="tax-label"><span class="abbr">ВОСМС</span> Мед. страхование</span>
+                <span class="tax-value mono">2%</span>
+              </div>
+              <div class="tax-row">
+                <span class="tax-label"><span class="abbr">ИПН</span> Подоходный налог</span>
+                <span class="tax-value mono">10%</span>
+              </div>
+              <div class="tax-row">
+                <span class="tax-label"><span class="abbr">СО</span> Соц. отчисления</span>
+                <span class="tax-value mono">3.5%</span>
+              </div>
+              <div class="tax-row">
+                <span class="tax-label"><span class="abbr">ООСМС</span> Работодатель ОСМС</span>
+                <span class="tax-value mono">3%</span>
+              </div>
+              <div class="tax-row">
+                <span class="tax-label"><span class="abbr">СН</span> Социальный налог</span>
+                <span class="tax-value mono">9.5%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Results + History -->
+      <div class="right-col">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-dot" style="background: var(--accent-green)"></div>
+            <div class="card-title">Результат расчёта</div>
+          </div>
+          <div class="card-body" id="resultsBody">
+            <div class="state-empty">
+              <div class="icon">⟳</div>
+              <p>Введите зарплату и нажмите «Рассчитать»</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- History -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-dot" style="background: var(--accent-amber)"></div>
+            <div class="card-title">История расчётов</div>
+            <div style="margin-left: auto;">
+              <button onclick="loadHistory(0)" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:12px;font-family:'Space Mono',monospace;letter-spacing:0.05em;">↻ обновить</button>
+            </div>
+          </div>
+          <div id="historyBody">
+            <div class="state-empty" style="min-height: 160px;">
+              <div class="icon">☰</div>
+              <p>История пока пуста</p>
+            </div>
+          </div>
+          <div class="pagination" id="pagination" style="display:none;">
+            <div class="pagination-info" id="paginationInfo"></div>
+            <div class="pagination-btns">
+              <button class="page-btn" id="prevBtn" onclick="changePage(-1)">‹</button>
+              <button class="page-btn" id="nextBtn" onclick="changePage(1)">›</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="app.js"> </script> 
+</body>
+</html>
