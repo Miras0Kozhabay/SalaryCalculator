@@ -60,6 +60,14 @@ Service layer is required.
 
 Repository must use interfaces.
 
+main.go must stay clean.
+
+Do not put initialization logic in main.
+
+All startup logic must be placed in separate file (app.go / server.go).
+
+main.go should only call Run().
+
 ---
 
 ## Logging
