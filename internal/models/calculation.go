@@ -22,7 +22,7 @@ type Calculation struct {
 }
 
 type CalculateRequest struct {
-	Amount float64 `json:"amount"`
+	Amount float64 `json:"salary"`
 	Mode   string  `json:"mode"`
 }
 
