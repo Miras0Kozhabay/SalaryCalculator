@@ -1,7 +1,6 @@
 package config
 
 import (
-	"log"
 	"os"
 	"strconv"
 )
@@ -19,17 +18,17 @@ type Config struct {
 func Load() *Config {
 	mciStr := os.Getenv("MCI")
 	mci, err := strconv.ParseFloat(mciStr, 64)
-	if err != nil {
-		log.Fatalf("invalid MCI: %v", err)
+	if err != nil || mci <= 0 {
+		mci = 3932
 	}
 
 	return &Config{
-		DBHost:     os.Getenv("DB_HOST"),
-		DBPort:     os.Getenv("DB_PORT"),
-		DBUser:     os.Getenv("DB_USER"),
-		DBPassword: os.Getenv("DB_PASSWORD"),
-		DBName:     os.Getenv("DB_NAME"),
-		ServerPort: os.Getenv("SERVER_PORT"),
+		DBHost:     getEnv("DB_HOST", "localhost"),
+		DBPort:     getEnv("DB_PORT", "5432"),
+		DBUser:     getEnv("DB_USER", "postgres"),
+		DBPassword: getEnv("DB_PASSWORD", ""),
+		DBName:     getEnv("DB_NAME", "salary_db"),
+		ServerPort: getEnv("SERVER_PORT", "8080"),
 		MCI:        mci,
 	}
 }
