@@ -3,8 +3,7 @@ package config
 import (
 	"log"
 	"os"
-
-	"github.com/joho/godotenv"
+	"strconv"
 )
 
 type Config struct {
@@ -13,31 +12,26 @@ type Config struct {
 	DBUser     string
 	DBPassword string
 	DBName     string
-
-	MCI string
-
 	ServerPort string
+	MCI        float64
 }
 
 func Load() *Config {
-	err := godotenv.Load()
+	mciStr := os.Getenv("MCI")
+	mci, err := strconv.ParseFloat(mciStr, 64)
 	if err != nil {
-		log.Println("No .env file found")
+		log.Fatalf("invalid MCI: %v", err)
 	}
 
-	cfg := &Config{
-		DBHost:     getEnv("DB_HOST", "localhost"),
-		DBPort:     getEnv("DB_PORT", "5432"),
-		DBUser:     getEnv("DB_USER", "postgres"),
-		DBPassword: getEnv("DB_PASSWORD", "postgres"),
-		DBName:     getEnv("DB_NAME", "salary_db"),
-
-		MCI: getEnv("MCI", "3932"),
-
-		ServerPort: getEnv("SERVER_PORT", "8080"),
+	return &Config{
+		DBHost:     os.Getenv("DB_HOST"),
+		DBPort:     os.Getenv("DB_PORT"),
+		DBUser:     os.Getenv("DB_USER"),
+		DBPassword: os.Getenv("DB_PASSWORD"),
+		DBName:     os.Getenv("DB_NAME"),
+		ServerPort: os.Getenv("SERVER_PORT"),
+		MCI:        mci,
 	}
-
-	return cfg
 }
 
 func getEnv(key, def string) string {
