@@ -45,17 +45,17 @@ func (s *SalaryService) Calculate(req *models.CalculateRequest) (*models.Calcula
 
 	// сохраняем в БД
 	calcModel := &models.Calculation{
-		GrossSalary: resp.GrossSalary,
-		NetSalary:   resp.NetSalary,
-		OPV:         resp.OPV,
-		IPN:         resp.IPN,
-		VOSMS:       resp.VOSMS,
-		SO:          resp.SO,
-		SN:          resp.SN,
-		OOSMS:       resp.OOSMS,
-		Mode:        req.Mode,
+		GrossSalary:   resp.GrossSalary,
+		NetSalary:     resp.NetSalary,
+		OPV:           resp.OPV,
+		IPN:           resp.IPN,
+		VOSMS:         resp.VOSMS,
+		SO:            resp.SO,
+		SN:            resp.SN,
+		OOSMS:         resp.OOSMS,
+		EmployerTotal: resp.EmployerTotal,
+		Mode:          req.Mode,
 	}
-
 	err = s.Repository.Save(calcModel)
 	if err != nil {
 		return nil, err
