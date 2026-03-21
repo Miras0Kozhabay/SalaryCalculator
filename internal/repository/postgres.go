@@ -16,11 +16,11 @@ func NewPostgresRepository(db *sql.DB) *PostgresRepository {
 
 func (r *PostgresRepository) Save(calc *models.Calculation) error {
 	query := `
-	INSERT INTO calculations 
-	(gross_salary, net_salary, opv, ipn, vosms, so, sn, oosms, mode, created_at)
-	VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW())
-	RETURNING id, created_at
-	`
+INSERT INTO calculations 
+(gross_salary, net_salary, opv, ipn, vosms, so, sn, oosms, employer_total, mode, created_at)
+VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,NOW())
+RETURNING id, created_at
+`
 	err := r.db.QueryRow(query,
 		calc.GrossSalary,
 		calc.NetSalary,
@@ -30,6 +30,7 @@ func (r *PostgresRepository) Save(calc *models.Calculation) error {
 		calc.SO,
 		calc.SN,
 		calc.OOSMS,
+		calc.EmployerTotal,
 		calc.Mode,
 	).Scan(&calc.ID, &calc.CreatedAt)
 
@@ -41,11 +42,11 @@ func (r *PostgresRepository) GetHistory(limit, offset int) ([]*models.Calculatio
 		limit = 10
 	}
 	query := `
-	SELECT id, gross_salary, net_salary, opv, ipn, vosms, so, sn, oosms, mode, created_at
-	FROM calculations
-	ORDER BY created_at DESC
-	LIMIT $1 OFFSET $2
-	`
+SELECT id, gross_salary, net_salary, opv, ipn, vosms, so, sn, oosms, employer_total, mode, created_at
+FROM calculations
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2
+`
 	rows, err := r.db.Query(query, limit, offset)
 	if err != nil {
 		return nil, err
@@ -59,7 +60,7 @@ func (r *PostgresRepository) GetHistory(limit, offset int) ([]*models.Calculatio
 			&c.ID, &c.GrossSalary, &c.NetSalary,
 			&c.OPV, &c.IPN, &c.VOSMS,
 			&c.SO, &c.SN, &c.OOSMS,
-			&c.Mode, &c.CreatedAt,
+			&c.EmployerTotal, &c.Mode, &c.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
