@@ -53,6 +53,8 @@ func Run() error {
 	router.HandleFunc("/api/calculate", salaryHandler.Calculate)
 	router.HandleFunc("/api/history", salaryHandler.History)
 	router.HandleFunc("/api/mci", salaryHandler.MCI)
+	router.Handle("/", http.FileServer(http.Dir("./web")))
+
 	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
