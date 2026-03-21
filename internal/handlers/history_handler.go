@@ -9,7 +9,7 @@ import (
 func (h *SalaryHandler) History(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method != http.MethodGet {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		jsonError(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -23,7 +23,7 @@ func (h *SalaryHandler) History(w http.ResponseWriter, r *http.Request) {
 
 	calcs, err := h.Service.GetHistory(limit, offset)
 	if err != nil {
-		http.Error(w, "failed to get history", http.StatusInternalServerError)
+		jsonError(w, "failed to get history", http.StatusInternalServerError)
 		return
 	}
 
