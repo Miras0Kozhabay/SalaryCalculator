@@ -16,7 +16,14 @@ func Logging(next http.Handler) http.Handler {
 
 		duration := time.Since(start)
 
-		log.Printf("%s %s %d %s", r.Method, r.URL.Path, lrw.statusCode, duration)
+		log.Printf(
+			"%s %s %d %s %s",
+			r.Method,
+			r.URL.Path,
+			lrw.statusCode,
+			duration,
+			r.RemoteAddr,
+		)
 	})
 }
 
