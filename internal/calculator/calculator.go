@@ -2,8 +2,11 @@ package calculator
 
 import (
 	"errors"
+	"log"
 	"salary-calculator/internal/models"
 )
+
+const MinSalary = 90000
 
 type Calculator struct {
 	MCI float64
@@ -16,13 +19,17 @@ func NewCalculator(mci float64) *Calculator {
 
 // CalculateFromGross — из gross salary
 func (c *Calculator) CalculateFromGross(gross float64) (*models.CalculateResponse, error) {
-	if gross <= 0 {
-		return nil, errors.New("gross salary must be > 0")
+	if gross <= MinSalary {
+		log.Printf("invalid gross salary: %f", gross)
+		return nil, errors.New("salary is too small")
 	}
 
 	opv := gross * 0.10
 	vosms := gross * 0.02
 	ipnBase := gross - opv - vosms - 14*c.MCI
+	if ipnBase < 0 {
+		ipnBase = 0
+	}
 	ipn := ipnBase * 0.10
 	net := gross - opv - vosms - ipn
 
@@ -51,8 +58,9 @@ func (c *Calculator) CalculateFromGross(gross float64) (*models.CalculateRespons
 
 // CalculateFromNet — из net salary
 func (c *Calculator) CalculateFromNet(net float64) (*models.CalculateResponse, error) {
-	if net <= 0 {
-		return nil, errors.New("net salary must be > 0")
+	if net <= MinSalary {
+		log.Printf("invalid net salary: %f", net)
+		return nil, errors.New("salary is too small")
 	}
 
 	// Используем итерацию, т.к. из net → gross сложнее
