@@ -3,6 +3,8 @@ package repository
 import (
 	"database/sql"
 	"errors"
+	"fmt"
+	"log"
 	"salary-calculator/internal/models"
 )
 
@@ -10,7 +12,9 @@ type PostgresRepository struct {
 	db *sql.DB
 }
 
-func NewPostgresRepository(db *sql.DB) *PostgresRepository {
+// NewPostgresRepository creates a new PostgreSQL repository instance.
+// Implements CalculationRepository interface.
+func NewPostgresRepository(db *sql.DB) CalculationRepository {
 	return &PostgresRepository{db: db}
 }
 
@@ -34,13 +38,22 @@ RETURNING id, created_at
 		calc.Mode,
 	).Scan(&calc.ID, &calc.CreatedAt)
 
-	return err
+	if err != nil {
+		log.Printf("error saving calculation to database: %v", err)
+		return fmt.Errorf("failed to save calculation: %w", err)
+	}
+
+	return nil
 }
 
 func (r *PostgresRepository) GetHistory(limit, offset int) ([]*models.Calculation, error) {
 	if limit <= 0 {
 		limit = 10
 	}
+	if offset < 0 {
+		offset = 0
+	}
+
 	query := `
 SELECT id, gross_salary, net_salary, opv, ipn, vosms, so, sn, oosms, employer_total, mode, created_at
 FROM calculations
@@ -49,7 +62,8 @@ LIMIT $1 OFFSET $2
 `
 	rows, err := r.db.Query(query, limit, offset)
 	if err != nil {
-		return nil, err
+		log.Printf("error querying calculation history: %v", err)
+		return nil, fmt.Errorf("failed to get history: %w", err)
 	}
 	defer rows.Close()
 
@@ -62,31 +76,41 @@ LIMIT $1 OFFSET $2
 			&c.SO, &c.SN, &c.OOSMS,
 			&c.EmployerTotal, &c.Mode, &c.CreatedAt,
 		); err != nil {
-			return nil, err
+			log.Printf("error scanning calculation row: %v", err)
+			return nil, fmt.Errorf("failed to parse history: %w", err)
 		}
 		history = append(history, &c)
 	}
+
+	if err := rows.Err(); err != nil {
+		log.Printf("error iterating calculation rows: %v", err)
+		return nil, fmt.Errorf("failed to iterate history: %w", err)
+	}
+
 	return history, nil
 }
 
 func (r *PostgresRepository) GetByID(id int64) (*models.Calculation, error) {
 	query := `
-	SELECT id, gross_salary, net_salary, opv, ipn, vosms, so, sn, oosms, mode, created_at
-	FROM calculations
-	WHERE id=$1
-	`
+SELECT id, gross_salary, net_salary, opv, ipn, vosms, so, sn, oosms, employer_total, mode, created_at
+FROM calculations
+WHERE id = $1
+`
 	var c models.Calculation
 	err := r.db.QueryRow(query, id).Scan(
 		&c.ID, &c.GrossSalary, &c.NetSalary,
 		&c.OPV, &c.IPN, &c.VOSMS,
 		&c.SO, &c.SN, &c.OOSMS,
-		&c.Mode, &c.CreatedAt,
+		&c.EmployerTotal, &c.Mode, &c.CreatedAt,
 	)
+
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, sql.ErrNoRows
 	}
 	if err != nil {
-		return nil, err
+		log.Printf("error retrieving calculation by id %d: %v", id, err)
+		return nil, fmt.Errorf("failed to get calculation: %w", err)
 	}
+
 	return &c, nil
 }

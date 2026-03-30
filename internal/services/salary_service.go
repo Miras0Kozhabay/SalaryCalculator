@@ -1,7 +1,7 @@
 package services
 
 import (
-	"errors"
+	"log"
 	"salary-calculator/internal/calculator"
 	"salary-calculator/internal/models"
 	"salary-calculator/internal/repository"
@@ -19,17 +19,18 @@ func NewSalaryService(calc *calculator.Calculator, repo repository.CalculationRe
 	}
 }
 
-// Calculate salary
+// Calculate salary with validation and persistence
 func (s *SalaryService) Calculate(req *models.CalculateRequest) (*models.CalculateResponse, error) {
-
+	// Validate input
 	if req.Amount <= 0 {
-		return nil, errors.New("amount must be > 0")
+		return nil, ErrInvalidInput
 	}
 
 	if req.Mode != "gross" && req.Mode != "net" {
-		return nil, errors.New("mode must be 'gross' or 'net'")
+		return nil, ErrInvalidInput
 	}
 
+	// Perform calculation (may return ErrCalculation if algorithm fails)
 	var resp *models.CalculateResponse
 	var err error
 
@@ -40,10 +41,12 @@ func (s *SalaryService) Calculate(req *models.CalculateRequest) (*models.Calcula
 	}
 
 	if err != nil {
-		return nil, err
+		// Wrap calculation errors
+		log.Printf("calculation error: %v", err)
+		return nil, ErrCalculation
 	}
 
-	// сохраняем в БД
+	// Save to database
 	calcModel := &models.Calculation{
 		GrossSalary:   resp.GrossSalary,
 		NetSalary:     resp.NetSalary,
@@ -56,9 +59,10 @@ func (s *SalaryService) Calculate(req *models.CalculateRequest) (*models.Calcula
 		EmployerTotal: resp.EmployerTotal,
 		Mode:          req.Mode,
 	}
-	err = s.Repository.Save(calcModel)
-	if err != nil {
-		return nil, err
+
+	if err := s.Repository.Save(calcModel); err != nil {
+		log.Printf("database error: %v", err)
+		return nil, ErrCalculation
 	}
 
 	return resp, nil
