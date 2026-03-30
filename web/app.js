@@ -52,10 +52,11 @@ const API_BASE = '';
 
     async function calculate() {
       hideError();
-      const raw = document.getElementById('salaryInput').value;
+      const raw = document.getElementById('salaryInput').value.trim();
       const salary = parseFloat(raw);
       const input = document.getElementById('salaryInput');
 
+      // Validate input
       if (!raw || isNaN(salary) || salary <= 0) {
         input.classList.add('error');
         showError('Введите корректную сумму (больше 0)');
@@ -64,24 +65,45 @@ const API_BASE = '';
       input.classList.remove('error');
 
       setLoading(true);
+      
+      // Create abort controller for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
       try {
         const res = await fetch(`${API_BASE}/api/calculate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ salary, mode: currentMode })
+          body: JSON.stringify({ salary, mode: currentMode }),
+          signal: controller.signal
         });
 
         if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.error || err.message || `HTTP ${res.status}`);
+          let errorMsg;
+          try {
+            const err = await res.json();
+            errorMsg = err.error || err.message || `HTTP ${res.status}`;
+          } catch {
+            errorMsg = `Server error: HTTP ${res.status}`;
+          }
+          throw new Error(errorMsg);
         }
 
         const data = await res.json();
         renderResults(data);
+        input.value = ''; // Clear input after successful calculation
         loadHistory(0);
       } catch (e) {
-        showError(e.message);
+        // Handle abort (timeout)
+        if (e.name === 'AbortError') {
+          showError('Request timeout - server not responding (10s)');
+        } else if (e.message === 'Failed to fetch') {
+          showError('Network error - please check your connection');
+        } else {
+          showError(e.message);
+        }
       } finally {
+        clearTimeout(timeoutId);
         setLoading(false);
       }
     }
@@ -187,6 +209,7 @@ const API_BASE = '';
                 <th>NET</th>
                 <th>ОПВ</th>
                 <th>ИПН</th>
+                <th>👔 Работодатель</th>
                 <th>Дата</th>
               </tr>
             </thead>
@@ -196,6 +219,7 @@ const API_BASE = '';
                 const net = row.net_salary ?? row.net ?? 0;
                 const opv = row.opv ?? 0;
                 const ipn = row.ipn ?? 0;
+                const employerTotal = row.employer_total ?? 0;
                 const mode = row.mode || 'gross';
                 return `
                   <tr>
@@ -205,6 +229,7 @@ const API_BASE = '';
                     <td class="mono" style="color:var(--accent-blue);font-weight:700">${fmt(net)} ₸</td>
                     <td class="mono" style="color:#f87171">−${fmt(opv)} ₸</td>
                     <td class="mono" style="color:#f87171">−${fmt(ipn)} ₸</td>
+                    <td class="mono" style="color:var(--accent-green);font-weight:600">${fmt(employerTotal)} ₸</td>
                     <td class="mono" style="color:var(--text-muted)">${formatDate(row.created_at)}</td>
                   </tr>
                 `;
