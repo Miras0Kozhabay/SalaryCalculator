@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -24,25 +26,39 @@ import (
 func Run() error {
 	_ = godotenv.Load()
 
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("config error: %w", err)
+	}
 
-	dsn := "host=" + cfg.DBHost +
-		" port=" + cfg.DBPort +
-		" user=" + cfg.DBUser +
-		" password=" + cfg.DBPassword +
-		" dbname=" + cfg.DBName +
-		" sslmode=disable"
+	// Build PostgreSQL DSN with SSL mode configuration
+	dsn := fmt.Sprintf(
+		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		cfg.DBHost,
+		cfg.DBPort,
+		cfg.DBUser,
+		cfg.DBPassword,
+		cfg.DBName,
+		cfg.DBSSLMode,
+	)
 
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 	defer db.Close()
 
+	// Configure connection pool for production
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(5 * time.Minute)
+
 	if err := db.Ping(); err != nil {
-		return err
+		return fmt.Errorf("database ping failed: %w", err)
 	}
-	log.Println("connected to database")
+
+	log.Printf("✓ Connected to database: %s@%s:%d/%s",
+		cfg.DBUser, cfg.DBHost, cfg.DBPort, cfg.DBName)
 
 	calc := calculator.NewCalculator(cfg.MCI)
 	repo := repository.NewPostgresRepository(db)
@@ -50,45 +66,55 @@ func Run() error {
 	salaryHandler := handlers.NewSalaryHandler(salaryService)
 
 	router := http.NewServeMux()
-	router.HandleFunc("/api/calculate", salaryHandler.Calculate)
-	router.HandleFunc("/api/history", salaryHandler.History)
-	router.HandleFunc("/api/mci", salaryHandler.MCI)
+	router.HandleFunc("POST /api/calculate", salaryHandler.Calculate)
+	router.HandleFunc("GET /api/history", salaryHandler.History)
+	router.HandleFunc("GET /api/mci", salaryHandler.MCI)
 	router.Handle("/", http.FileServer(http.Dir("./web")))
 
-	router.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("ok"))
+		w.Write([]byte(`{"status":"ok"}`))
 	})
 
 	handler := middleware.Logging(router)
 
+	addr := ":" + strconv.Itoa(cfg.ServerPort)
 	server := &http.Server{
-		Addr:         ":" + cfg.ServerPort,
+		Addr:         addr,
 		Handler:      handler,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
 
-	return startServer(server)
+	return startServer(server, addr)
 }
 
-func startServer(server *http.Server) error {
+func startServer(server *http.Server, addr string) error {
+	// Start server in goroutine
 	go func() {
-		log.Printf("server started on %s", server.Addr)
+		log.Printf("🚀 Server starting on http://localhost%s", addr)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatal(err)
+			log.Printf("❌ Server error: %v", err)
 		}
 	}()
 
+	// Wait for shutdown signal
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 	<-stop
 
-	log.Println("shutting down...")
+	log.Println("⏹️  Graceful shutdown initiated...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// Graceful shutdown with timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	return server.Shutdown(ctx)
+	if err := server.Shutdown(ctx); err != nil {
+		return fmt.Errorf("shutdown error: %w", err)
+	}
+
+	log.Println("✓ Server stopped gracefully")
+	return nil
 }
