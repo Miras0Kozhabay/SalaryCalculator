@@ -12,7 +12,13 @@ CREATE TABLE IF NOT EXISTS calculations (
     employer_total NUMERIC(15,2) NOT NULL,
     created_at   TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
- 
-CREATE INDEX idx_created_at ON calculations(created_at);
-CREATE INDEX idx_mode       ON calculations(mode);
+
+-- Composite index for the most common query pattern (ordering by created_at, filtering)
+CREATE INDEX idx_created_at_desc ON calculations(created_at DESC);
+
+-- Index for filtering by mode
+CREATE INDEX idx_mode ON calculations(mode);
+
+-- Composite index for history queries with both mode and created_at
+CREATE INDEX idx_mode_created_at ON calculations(mode, created_at DESC);
  
