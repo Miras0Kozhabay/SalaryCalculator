@@ -1,42 +1,57 @@
 package calculator
 
 import (
-	"errors"
+	"fmt"
 	"log"
 	"salary-calculator/internal/models"
 )
 
-const MinSalary = 90000
+const (
+	MinSalary     = 90000
+	MaxSalary     = 100000000
+	MaxIterations = 20
+	Epsilon       = 0.01 // 0.01 tenge precision
+)
 
 type Calculator struct {
 	MCI float64
 }
 
-// NewCalculator создает калькулятор с заданным МРП
+// NewCalculator creates a calculator with the specified MCI (МРП)
 func NewCalculator(mci float64) *Calculator {
 	return &Calculator{MCI: mci}
 }
 
-// CalculateFromGross — из gross salary
+// CalculateFromGross calculates take-home salary from gross salary (before tax deductions)
 func (c *Calculator) CalculateFromGross(gross float64) (*models.CalculateResponse, error) {
 	if gross <= MinSalary {
-		log.Printf("invalid gross salary: %f", gross)
-		return nil, errors.New("salary is too small")
+		return nil, fmt.Errorf("salary is too small (minimum: %d, got: %.2f)", MinSalary, gross)
+	}
+	if gross > MaxSalary {
+		return nil, fmt.Errorf("salary is too large (maximum: %d, got: %.2f)", MaxSalary, gross)
 	}
 
+	// Employee deductions
 	opv := gross * 0.10
 	vosms := gross * 0.02
+
+	// IPN base = gross - OPV - VOSMS - 14*MCI
 	ipnBase := gross - opv - vosms - 14*c.MCI
 	if ipnBase < 0 {
 		ipnBase = 0
 	}
 	ipn := ipnBase * 0.10
+
+	// Net salary (take-home)
 	net := gross - opv - vosms - ipn
 
-	// работодателю
+	// Employer contributions
 	so := (gross - opv) * 0.035
 	oosms := gross * 0.03
-	sn := (gross-opv-vosms)*0.095 - so
+
+	// SN = 9.5% of (gross - OPV - VOSMS) - SO
+	snBase := (gross - opv - vosms) * 0.095
+	sn := snBase - so
 	if sn < 0 {
 		sn = 0
 	}
@@ -56,29 +71,42 @@ func (c *Calculator) CalculateFromGross(gross float64) (*models.CalculateRespons
 	return resp, nil
 }
 
-// CalculateFromNet — из net salary
+// CalculateFromNet calculates gross salary from net (take-home) salary.
+// Uses iterative approach with guaranteed convergence or error.
 func (c *Calculator) CalculateFromNet(net float64) (*models.CalculateResponse, error) {
 	if net <= MinSalary {
-		log.Printf("invalid net salary: %f", net)
-		return nil, errors.New("salary is too small")
+		return nil, fmt.Errorf("salary is too small (minimum: %d, got: %.2f)", MinSalary, net)
+	}
+	if net > MaxSalary {
+		return nil, fmt.Errorf("salary is too large (maximum: %d, got: %.2f)", MaxSalary, net)
 	}
 
-	// Используем итерацию, т.к. из net → gross сложнее
+	// Start with net as initial estimate for gross
 	gross := net
+
 	var resp *models.CalculateResponse
-	for i := 0; i < 10; i++ {
+	for i := 0; i < MaxIterations; i++ {
 		var err error
 		resp, err = c.CalculateFromGross(gross)
 		if err != nil {
 			return nil, err
 		}
 
+		// Check if we've converged
 		diff := net - resp.NetSalary
-		if diff < 0.01 && diff > -0.01 {
-			break
+		if diff < Epsilon && diff > -Epsilon {
+			log.Printf("CalculateFromNet converged after %d iterations (diff: %.2f)", i+1, diff)
+			return resp, nil
 		}
+
+		// Adjust gross for next iteration
 		gross += diff
 	}
 
-	return resp, nil
+	// Did not converge - this is an error condition
+	log.Printf("⚠️  Warning: CalculateFromNet did not converge after %d iterations", MaxIterations)
+	return nil, fmt.Errorf(
+		"calculation did not converge: net salary %.2f could not be reached (final diff: %.2f)",
+		net, net-resp.NetSalary,
+	)
 }
