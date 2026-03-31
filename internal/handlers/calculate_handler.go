@@ -37,19 +37,23 @@ func (h *SalaryHandler) Calculate(w http.ResponseWriter, r *http.Request) {
 		// Handle JSON parsing errors (400 Bad Request)
 		if err == io.EOF {
 			jsonError(w, "request body is empty", http.StatusBadRequest)
+			log.Printf("error decoding request: %v", err)
+			return
 		} else if err.Error() == "http: request body too large" {
 			jsonError(w, "request body too large (max 1MB)", http.StatusRequestEntityTooLarge)
-		} else {
-			var syntaxErr *json.SyntaxError
-			var typeErr *json.UnmarshalTypeError
+			log.Printf("error decoding request: %v", err)
+			return
+		}
 
-			if errors.As(err, &syntaxErr) {
-				jsonError(w, fmt.Sprintf("invalid JSON at byte offset %d", syntaxErr.Offset), http.StatusBadRequest)
-			} else if errors.As(err, &typeErr) {
-				jsonError(w, fmt.Sprintf("invalid type for field %q: expected %s", typeErr.Field, typeErr.Type), http.StatusBadRequest)
-			} else {
-				jsonError(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
-			}
+		var syntaxErr *json.SyntaxError
+		var typeErr *json.UnmarshalTypeError
+
+		if errors.As(err, &syntaxErr) {
+			jsonError(w, fmt.Sprintf("invalid JSON at byte offset %d", syntaxErr.Offset), http.StatusBadRequest)
+		} else if errors.As(err, &typeErr) {
+			jsonError(w, fmt.Sprintf("invalid type for field %q: expected %s", typeErr.Field, typeErr.Type), http.StatusBadRequest)
+		} else {
+			jsonError(w, fmt.Sprintf("invalid request: %v", err), http.StatusBadRequest)
 		}
 		log.Printf("error decoding request: %v", err)
 		return
@@ -62,15 +66,20 @@ func (h *SalaryHandler) Calculate(w http.ResponseWriter, r *http.Request) {
 		if errors.Is(err, services.ErrInvalidInput) {
 			// Validation error → 400 Bad Request
 			jsonError(w, "invalid input: "+err.Error(), http.StatusBadRequest)
-		} else if errors.Is(err, services.ErrCalculation) {
-			// Calculation or database error → 500 Internal Server Error
-			jsonError(w, "calculation failed", http.StatusInternalServerError)
-			log.Printf("calculation/database error: %v", err)
-		} else {
-			// Unknown error → 500
-			jsonError(w, "internal server error", http.StatusInternalServerError)
-			log.Printf("unknown error: %v", err)
+			log.Printf("validation error: %v", err)
+			return
 		}
+
+		if errors.Is(err, services.ErrCalculation) {
+			// Calculation error → 500 Internal Server Error (but with detailed message)
+			jsonError(w, err.Error(), http.StatusInternalServerError)
+			log.Printf("calculation error: %v", err)
+			return
+		}
+
+		// Unknown error → 500
+		jsonError(w, "internal server error", http.StatusInternalServerError)
+		log.Printf("unknown error: %v", err)
 		return
 	}
 

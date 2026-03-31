@@ -41,9 +41,9 @@ func (s *SalaryService) Calculate(req *models.CalculateRequest) (*models.Calcula
 	}
 
 	if err != nil {
-		// Wrap calculation errors
+		// Wrap calculation errors with original message
 		log.Printf("calculation error: %v", err)
-		return nil, ErrCalculation
+		return nil, WrapCalculationError(err)
 	}
 
 	// Save to database
